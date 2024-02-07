@@ -20,6 +20,39 @@ export async function voteOnPoll(app: FastifyInstance) {
     // Criando uma validação para verificar se o usuário já possui um cookie com sessionId, caso não tenha, criar uma session
     let sessionId = request.cookies.sessionId
 
+    if (sessionId) {
+      // Verificando se o usuário já votou nesta enquete (pollId)
+      // Motivo: Evitar que o banco de dados seja o responsável por garantir a regra de negócio
+      const userPreviousVoteOnThisPoll = await prisma.vote.findUnique({
+        where: {
+          // sessionId_pollId -> é criado devido a constraint @@unique (forma performática para acessar registros específicos)
+          sessionId_pollId: {
+            sessionId,
+            pollId
+          }
+        }
+      })
+
+
+      // Caso o usuário já tenha votado nesta enquete
+      // Caso o voto do usuário seja diferente do voto que ele esteja enviando agora
+      if (userPreviousVoteOnThisPoll && userPreviousVoteOnThisPoll.pollOptionId !== pollOptionId) {
+        // Apagar o voto anterior e registrar o novo
+        await prisma.vote.delete({
+          where: {
+            id: userPreviousVoteOnThisPoll.id
+          }
+        })
+
+
+      } else if (userPreviousVoteOnThisPoll) {
+        return reply.status(400).send({
+          message: 'You already voted on this poll.'
+        })
+      }
+    }
+
+
     if (!sessionId) {
       // Armazenando cookies (para "evitar" votos duplicados)
       sessionId = randomUUID()
@@ -34,13 +67,20 @@ export async function voteOnPoll(app: FastifyInstance) {
         signed: true,
         httpOnly: true
       })
-
     }
 
+    // Criando o voto
+    await prisma.vote.create({
+      data: {
+        sessionId,
+        pollId,
+        pollOptionId
+      }
+    })
 
 
     // Retornando o objeto por completo
-    return reply.status(200).send({ sessionId })
+    return reply.status(200).send()
   })
 }
 

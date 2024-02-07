@@ -17,7 +17,7 @@ model Poll {
   updatedAt DateTime @default(now())
 
   options PollOption[]
-  Vote    Vote[]
+  votes   Vote[]
 }
 
 // 1 Poll pode ter N PollOption
@@ -28,7 +28,7 @@ model PollOption {
 
   poll   Poll   @relation(fields: [pollId], references: [id])
   pollId String
-  Vote   Vote[]
+  votes  Vote[]
 }
 
 model Vote {
