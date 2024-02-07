@@ -40,7 +40,7 @@ export async function voteOnPoll(app: FastifyInstance) {
 
 
     // Retornando o objeto por completo
-    return reply.status(200).send()
+    return reply.status(200).send({ sessionId })
   })
 }
 
