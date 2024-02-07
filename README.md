@@ -53,6 +53,9 @@
    - Os cookies não devem ser manipulados para evitar fraudes na votação.
 
 
+## Configuração do Projeto
+
+Para executar este projeto localmente, siga as etapas abaixo:
 
 ```bash
 # Clone o repositório
