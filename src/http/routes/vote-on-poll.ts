@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma"
 import { FastifyInstance } from "fastify"
 import { randomUUID } from 'node:crypto'
 import { redis } from "../../lib/redis"
+import { voting } from "../utils/voting-pub-sub"
 
 export async function voteOnPoll(app: FastifyInstance) {
   app.post('/polls/:pollId/votes', async (request, reply) => {
@@ -48,7 +49,12 @@ export async function voteOnPoll(app: FastifyInstance) {
         // quando o usuário troca o voto, é necessário remover a pontuação antiga no REDIS
         //userPreviousVoteOnThisPoll.pollOptionId -> é a opção antiga do usuário
         // pollOptionId -> seria a nova opção
-        await redis.zincrby(pollId, -1, userPreviousVoteOnThisPoll.pollOptionId)
+        const votes = await redis.zincrby(pollId, -1, userPreviousVoteOnThisPoll.pollOptionId)
+
+        voting.publish(pollId, {
+          pollOptionId: userPreviousVoteOnThisPoll.pollOptionId,
+          votes: Number(votes)
+        })
 
       } else if (userPreviousVoteOnThisPoll) {
         return reply.status(400).send({
@@ -84,8 +90,13 @@ export async function voteOnPoll(app: FastifyInstance) {
     })
 
     // // Salvando em "cache" as informações da votação
-    await redis.zincrby(pollId, 1, pollOptionId) // incrementa em 1 o ranking de pollOptionId dentro da enquete pollId
+    const votes = await redis.zincrby(pollId, 1, pollOptionId) // incrementa em 1 o ranking de pollOptionId dentro da enquete pollId
 
+
+    voting.publish(pollId, {
+      pollOptionId,
+      votes: Number(votes)
+    })
 
     // Retornando o objeto por completo
     return reply.status(200).send()
